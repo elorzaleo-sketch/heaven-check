@@ -289,6 +289,7 @@
   .modal-emojis{font-size:36px;margin-bottom:6px;letter-spacing:4px;}
   .modal-card h3{font-family:var(--font-display);font-size:20px;font-weight:800;margin:14px 0 10px;}
   .modal-card p{color:var(--muted);font-size:14px;line-height:1.55;margin:0 0 22px;}
+  .modal-card .btn{display:inline-flex;width:auto;padding-left:30px;padding-right:30px;}
 </style>
 </head>
 <body>
@@ -341,14 +342,14 @@
       <input type="text" id="fEmpresa" placeholder="Nombre de tu negocio" autocomplete="organization" />
     </div>
     <div class="field">
-      <label>Teléfono (opcional)</label>
+      <label>Teléfono <span class="req">*</span></label>
       <input type="tel" id="fTelefono" placeholder="11 1234 5678" autocomplete="tel" />
     </div>
     <div class="field">
       <label>Email (opcional)</label>
       <input type="email" id="fEmail" placeholder="tu@email.com" autocomplete="email" />
     </div>
-    <div class="err" id="personalErr">Completá nombre y empresa para continuar.</div>
+    <div class="err" id="personalErr">Completá nombre, empresa y teléfono para continuar.</div>
     <div class="spacer"></div>
     <div class="actions">
       <button class="btn btn-ghost" data-back="intro">Atrás</button>
@@ -388,7 +389,7 @@
     <div class="modal-emojis">🎉🚀🎊</div>
     <h3 id="modalTitle">¡Gracias!</h3>
     <p>En los próximos días te contactará alguien de nuestro equipo especializado.</p>
-    <button class="btn btn-primary" id="modalCloseBtn">Volver a jugar</button>
+    <button class="btn btn-primary" id="modalCloseBtn">Volver al inicio</button>
   </div>
 </div>
 
@@ -487,7 +488,7 @@
     const empresa = document.getElementById("fEmpresa").value.trim();
     const telefono = document.getElementById("fTelefono").value.trim();
     const email = document.getElementById("fEmail").value.trim();
-    if (!nombre || !empresa){
+    if (!nombre || !empresa || !telefono){
       document.getElementById("personalErr").classList.add("show");
       return;
     }
@@ -595,7 +596,7 @@
   function renderResult(){
     const r = lastResult;
     const html = `
-      <div style="text-align:center;"><span class="eyebrow">🧭 Resultado de tu Heaven Check</span></div>
+      <h1 style="text-align:center;">Tu <span class="accent">resultado</span></h1>
       <div class="result-eyebrow"><div class="result-ring"><div class="result-emoji">${r.outcome.emoji}</div></div></div>
       <div class="result-title">${r.outcome.nombre}</div>
       <div class="result-diag">${r.diagnosticoOverride || r.outcome.diagnostico}</div>
@@ -654,8 +655,11 @@
 
   updateProgress();
 
+  // Se había registrado un service worker en una versión anterior y podía
+  // interferir con el guardado en Supabase en el mismo dispositivo — lo
+  // desregistramos automáticamente si quedó instalado.
   if ("serviceWorker" in navigator){
-    navigator.serviceWorker.register("sw.js").catch(() => {});
+    navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()));
   }
 })();
 </script>
