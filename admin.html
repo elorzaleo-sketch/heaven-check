@@ -152,6 +152,7 @@
           <option value="Graciela">Graciela</option>
         </select>
         <div class="exportBtns">
+          <button id="refreshBtn" title="Volver a pedir los leads a la base">🔄 Actualizar</button>
           <button id="csvBtn">Exportar CSV</button>
           <button id="xlsxBtn">Exportar Excel</button>
         </div>
@@ -194,10 +195,16 @@
     if (data.session) enterDashboard();
   }
 
+  let autoRefreshTimer = null;
+
   async function enterDashboard(){
     document.getElementById("loginScreen").style.display = "none";
     document.getElementById("dashboard").style.display = "block";
     await loadLeads();
+    // Vuelve a pedir los leads solo cada 20s, para que el panel se mantenga
+    // al día aunque quede abierto toda la jornada del evento sin recargar.
+    if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+    autoRefreshTimer = setInterval(loadLeads, 20000);
   }
 
   // ---------------- datos ----------------
@@ -209,6 +216,8 @@
     renderChart();
     renderTable();
   }
+
+  document.getElementById("refreshBtn").onclick = () => loadLeads();
 
   function renderStats(){
     const total = allLeads.length;
