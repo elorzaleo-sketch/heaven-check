@@ -447,6 +447,10 @@
   let personal = { nombre:"", empresa:"", telefono:"", email:"" };
   let leadId = null;
   let lastResult = null;
+  // Guarda la promesa del guardado inicial del lead, para que el pedido de
+  // demo (que puede llegar en cualquier momento después) siempre espere a
+  // que esa fila ya exista antes de intentar actualizarla.
+  let insertPromise = Promise.resolve();
 
   function activeQuestions(){
     return QUESTIONS.filter(q => {
@@ -579,7 +583,7 @@
     leadId = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
 
     if (supabase){
-      supabase.from("leads").insert({
+      insertPromise = supabase.from("leads").insert({
         id: leadId,
         nombre: personal.nombre,
         empresa: personal.empresa,
@@ -629,11 +633,16 @@
     const btn = document.getElementById("demoBtn");
     if (btn){ btn.disabled = true; btn.textContent = "Enviando…"; }
     if (supabase && leadId){
-      supabase.from("leads").update({
-        quiere_demo: true,
-        demo_contacto: personal.telefono || null,
-        demo_requested_at: new Date().toISOString(),
-      }).eq("id", leadId).then(({error}) => { if (error) console.warn("Error guardando demo:", error); });
+      // Esperamos a que el guardado inicial del lead haya terminado (haya
+      // salido bien o mal) antes de intentar marcar la demo, para no llegar
+      // antes de que la fila exista en la base.
+      insertPromise.then(() => {
+        supabase.from("leads").update({
+          quiere_demo: true,
+          demo_contacto: personal.telefono || null,
+          demo_requested_at: new Date().toISOString(),
+        }).eq("id", leadId).then(({error}) => { if (error) console.warn("Error guardando demo:", error); });
+      });
     }
     const modal = document.getElementById("demoModal");
     document.getElementById("modalTitle").textContent = "¡Gracias, " + (personal.nombre.split(" ")[0] || "") + "!";
@@ -648,7 +657,7 @@
   function resetApp(){
     Object.keys(answers).forEach(k => delete answers[k]);
     personal = { nombre:"", empresa:"", telefono:"", email:"" };
-    leadId = null; lastResult = null; qIndex = 0;
+    leadId = null; lastResult = null; qIndex = 0; insertPromise = Promise.resolve();
     document.getElementById("fNombre").value = "";
     document.getElementById("fEmpresa").value = "";
     document.getElementById("fTelefono").value = "";
