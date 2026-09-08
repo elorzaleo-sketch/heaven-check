@@ -5,6 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
 <title>Heaven Check</title>
 
+<!-- Ícono de la pestaña + "agregar a pantalla de inicio" -->
+<link rel="icon" href="assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#000b1d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Heaven Check">
+<meta name="mobile-web-app-capable" content="yes">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -35,6 +47,7 @@
   body{
     margin:0;
     min-height:100vh;
+    min-height:100dvh;
     font-family:var(--font-body);
     background:
       radial-gradient(1200px 700px at 15% -10%, #041233 0%, transparent 60%),
@@ -46,7 +59,7 @@
     justify-content:center;
     padding:24px;
     position:relative;
-    overflow:hidden;
+    overflow-x:hidden;
   }
   /* -- decoración de fondo: ondas + resplandores, en línea con la gráfica de Heaven -- */
   .bg-decor{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
@@ -88,6 +101,8 @@
     flex-direction:column;
     padding:34px 30px 30px;
     animation:fadeIn .35s ease;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
   }
   .screen.active{display:flex;}
   @keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
@@ -238,14 +253,42 @@
     background:var(--blue-soft);border:1px solid var(--blue-border);
   }
 
-  .demo-box{margin-top:22px;border-top:1px solid rgba(255,255,255,.1);padding-top:22px;}
-  .demo-box p{color:var(--muted);font-size:14px;margin:0 0 14px;}
-  .thankyou{text-align:center;padding:10px 0;}
-  .thankyou .big{font-size:36px;margin-bottom:10px;}
+  .demo-box{margin-top:24px;}
+  .cta-card{
+    position:relative;overflow:hidden;
+    background:linear-gradient(155deg, rgba(0,153,255,.16), rgba(59,80,162,.14));
+    border:1px solid var(--blue-border);
+    border-radius:18px;padding:22px;
+    box-shadow:0 12px 30px rgba(0,153,255,.1);
+  }
+  .cta-card .cta-eyebrow{color:var(--blue);font-family:var(--font-display);font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;}
+  .cta-card h3{font-family:var(--font-display);font-size:19px;font-weight:800;margin:0 0 8px;line-height:1.25;text-wrap:balance;}
+  .cta-card p{color:var(--muted);font-size:13.8px;line-height:1.55;margin:0 0 18px;}
 
   .replay{text-align:center;margin-top:18px;}
   .replay a{color:var(--muted);font-size:12.5px;text-decoration:none;border-bottom:1px dotted rgba(255,255,255,.25);}
   .replay a:hover{color:var(--white);}
+
+  /* popup de confirmación de demo */
+  .modal-overlay{
+    position:fixed;inset:0;z-index:200;
+    background:rgba(0,4,12,.72);backdrop-filter:blur(3px);
+    display:flex;align-items:center;justify-content:center;padding:24px;
+    animation:fadeIn .25s ease;
+  }
+  .modal-overlay[hidden]{display:none;}
+  .modal-card{
+    width:100%;max-width:340px;text-align:center;
+    background:linear-gradient(180deg, var(--bg-2), var(--bg-1));
+    border:1px solid var(--blue-border);border-radius:22px;
+    padding:32px 26px 28px;
+    box-shadow:0 30px 70px rgba(0,0,0,.6);
+    animation:modalPop .35s cubic-bezier(.2,.9,.3,1.3);
+  }
+  @keyframes modalPop{from{opacity:0;transform:scale(.9) translateY(8px);}to{opacity:1;transform:none;}}
+  .modal-emojis{font-size:36px;margin-bottom:6px;letter-spacing:4px;}
+  .modal-card h3{font-family:var(--font-display);font-size:20px;font-weight:800;margin:14px 0 10px;}
+  .modal-card p{color:var(--muted);font-size:14px;line-height:1.55;margin:0 0 22px;}
 </style>
 </head>
 <body>
@@ -337,6 +380,16 @@
   <section class="screen" data-screen="result">
     <div id="resultContent"></div>
   </section>
+</div>
+
+<!-- POPUP: confirmación de demo solicitada -->
+<div class="modal-overlay" id="demoModal" hidden>
+  <div class="modal-card">
+    <div class="modal-emojis">🎉🚀🎊</div>
+    <h3 id="modalTitle">¡Gracias!</h3>
+    <p>En los próximos días te contactará alguien de nuestro equipo especializado.</p>
+    <button class="btn btn-primary" id="modalCloseBtn">Volver a jugar</button>
+  </div>
 </div>
 
 <script>
@@ -542,6 +595,7 @@
   function renderResult(){
     const r = lastResult;
     const html = `
+      <div style="text-align:center;"><span class="eyebrow">🧭 Resultado de tu Heaven Check</span></div>
       <div class="result-eyebrow"><div class="result-ring"><div class="result-emoji">${r.outcome.emoji}</div></div></div>
       <div class="result-title">${r.outcome.nombre}</div>
       <div class="result-diag">${r.diagnosticoOverride || r.outcome.diagnostico}</div>
@@ -549,49 +603,43 @@
       <ul class="opps">
         ${r.opportunities.map(o => `<li><span class="opp-ico">${o.emoji || "✓"}</span><span>${o.text}</span></li>`).join("")}
       </ul>
-      <div class="demo-box" id="demoBox">
-        <p>¿Querés ver cómo Heaven podría aplicarse a tu negocio?</p>
-        <div class="actions" style="margin-top:0;">
-          <button class="btn btn-primary" id="demoBtn">Solicitar una demo 🚀</button>
+      <div class="demo-box">
+        <div class="cta-card">
+          <div class="cta-eyebrow">⚡ Oferta exclusiva de hoy</div>
+          <h3>No dejes pasar esta oportunidad</h3>
+          <p>Los próximos 15 minutos pueden cambiar cómo gestionás tu negocio. Pedí tu demo gratuita ahora y descubrí, sin compromiso, todo lo que Heaven puede automatizar por vos.</p>
+          <div class="actions" style="margin-top:0;">
+            <button class="btn btn-primary" id="demoBtn">Quiero mi demo gratis 🚀</button>
+          </div>
         </div>
       </div>
       <div class="replay"><a href="#" id="replayLink">Volver a jugar</a></div>
     `;
     document.getElementById("resultContent").innerHTML = html;
 
-    document.getElementById("demoBtn").onclick = showDemoForm;
+    document.getElementById("demoBtn").onclick = requestDemo;
     document.getElementById("replayLink").onclick = (e) => { e.preventDefault(); resetApp(); };
   }
 
-  function showDemoForm(){
-    const box = document.getElementById("demoBox");
-    box.innerHTML = `
-      <p>Dejanos un teléfono o WhatsApp y te contactamos para coordinar la demo.</p>
-      <div class="field"><input type="text" id="demoContacto" placeholder="Teléfono / WhatsApp" value="${personal.telefono ? personal.telefono.replace(/"/g,'') : ''}" /></div>
-      <div class="actions" style="margin-top:0;">
-        <button class="btn btn-primary" id="demoSend">Enviar</button>
-      </div>
-    `;
-    document.getElementById("demoSend").onclick = submitDemo;
-  }
-
-  function submitDemo(){
-    const contacto = document.getElementById("demoContacto").value.trim();
+  function requestDemo(){
+    const btn = document.getElementById("demoBtn");
+    if (btn){ btn.disabled = true; btn.textContent = "Enviando…"; }
     if (supabase && leadId){
       supabase.from("leads").update({
         quiere_demo: true,
-        demo_contacto: contacto || null,
+        demo_contacto: personal.telefono || null,
         demo_requested_at: new Date().toISOString(),
       }).eq("id", leadId).then(({error}) => { if (error) console.warn("Error guardando demo:", error); });
     }
-    document.getElementById("demoBox").innerHTML = `
-      <div class="thankyou">
-        <div class="big">✅</div>
-        <div style="font-weight:700;margin-bottom:6px;">¡Listo, ${personal.nombre.split(" ")[0]}!</div>
-        <div style="color:var(--muted);font-size:14px;">En breve te contactamos para coordinar tu demo de Heaven.</div>
-      </div>
-    `;
+    const modal = document.getElementById("demoModal");
+    document.getElementById("modalTitle").textContent = "¡Gracias, " + (personal.nombre.split(" ")[0] || "") + "!";
+    modal.hidden = false;
   }
+
+  document.getElementById("modalCloseBtn").onclick = () => {
+    document.getElementById("demoModal").hidden = true;
+    resetApp();
+  };
 
   function resetApp(){
     Object.keys(answers).forEach(k => delete answers[k]);
@@ -605,6 +653,10 @@
   }
 
   updateProgress();
+
+  if ("serviceWorker" in navigator){
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  }
 })();
 </script>
 </body>

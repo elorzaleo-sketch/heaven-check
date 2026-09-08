@@ -9,12 +9,15 @@ heaven-check/
 ├── index.html        → el juego (lo que se muestra en el stand)
 ├── admin.html         → panel de control para el equipo de Heaven
 ├── scoring.js          → motor de clasificación (preguntas + lógica de puntaje)
+├── manifest.json       → para "agregar a pantalla de inicio" el juego
+├── admin-manifest.json → ídem, para el panel de admin
+├── sw.js               → service worker mínimo (requisito técnico para instalar como app)
 ├── assets/
-│   ├── logo-white.png
-│   └── logo-blue.png
+│   ├── logo-white.png / logo-blue.png   → logos originales
+│   └── favicon.ico, favicon-*.png, apple-touch-icon.png, icon-192.png, icon-512.png → íconos generados a partir del isotipo de Heaven
 └── supabase/
     ├── schema.sql         → esquema completo, para un proyecto de Supabase nuevo
-    └── migration_v2.sql   → agrega teléfono + asignación, para el proyecto que ya tenías
+    └── migration_v2.sql   → agrega teléfono, asignación y borrado, para el proyecto que ya tenías
 ```
 
 No hay build step: son archivos estáticos, se pueden abrir directo en el navegador o desplegar tal cual.
@@ -29,7 +32,7 @@ Si es la primera vez (proyecto nuevo):
    - **Project URL**
    - **anon public key**
 
-Si ya tenías el proyecto corriendo con una versión anterior de Heaven Check: solo hace falta correr `supabase/migration_v2.sql` una vez en el **SQL Editor** (agrega el campo de teléfono y la asignación a Pablo/Graciela) — no hace falta tocar nada más de Supabase.
+Si ya tenías el proyecto corriendo con una versión anterior de Heaven Check: solo hace falta correr `supabase/migration_v2.sql` una vez en el **SQL Editor** (agrega el campo de teléfono, la asignación a Pablo/Graciela y el permiso para borrar leads) — no hace falta tocar nada más de Supabase.
 
 ## 2) Conectar la app a Supabase
 
@@ -68,8 +71,12 @@ El panel de control queda en `https://tu-dominio.vercel.app/admin.html`.
 
 - **Teléfono** en la pantalla de datos personales (opcional, igual que el email).
 - **Asignación de leads**: desde `admin.html`, cada fila de la tabla tiene un selector para asignarla a **Pablo**, **Graciela** o dejarla sin asignar. Hay también un filtro por asignado. Para agregar más nombres en el futuro, se edita el array `ASIGNADOS` al principio del `<script>` de `admin.html`.
+- **Eliminar leads**: cada fila de la tabla en `admin.html` tiene un botón 🗑 para borrarla (pide confirmación antes). Útil para limpiar las pruebas antes del evento.
 - **Export a Excel**: además de "Exportar CSV" ahora hay "Exportar Excel", que genera un `.xlsx` con las mismas columnas que ves en la tabla (incluye teléfono y asignado).
 - Rediseño visual del juego: más jerarquía tipográfica (tipografía Sora para títulos), un emoji + ícono por pregunta, fondo con las ondas de la marca, y tarjetas de oportunidades con su propio ícono en el resultado.
+- Arreglado el bloqueo de scroll en celular/tablet.
+- Pantalla de resultado con encabezado "Resultado de tu Heaven Check", y un cierre más persuasivo ("No dejes pasar esta oportunidad…") con un solo botón — ya no vuelve a pedir el teléfono (usa el que la persona cargó al principio) y al confirmar muestra un popup de festejo en vez de un formulario.
+- **Ícono propio + "agregar a pantalla de inicio"**: tanto el juego como el panel ahora tienen el logo de Heaven como ícono de pestaña, y se pueden instalar como una app en el celular/tablet (Android: menú del navegador → "Instalar app" / "Agregar a pantalla de inicio"; iPhone/iPad: botón Compartir → "Agregar a pantalla de inicio"). Al abrirse desde el ícono, se ve sin la barra del navegador, como una app.
 
 ## Notas sobre el motor de scoring
 

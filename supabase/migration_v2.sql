@@ -16,3 +16,10 @@ create policy "admin autenticado puede actualizar"
   to authenticated
   using (true)
   with check (true);
+
+-- Permite borrar leads de prueba desde el panel (uno por uno).
+drop policy if exists "admin autenticado puede eliminar" on public.leads;
+create policy "admin autenticado puede eliminar"
+  on public.leads for delete
+  to authenticated
+  using (true);

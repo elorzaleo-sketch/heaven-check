@@ -4,6 +4,18 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Heaven Check — Admin</title>
+
+<link rel="icon" href="assets/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="manifest" href="admin-manifest.json">
+<meta name="theme-color" content="#000b1d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Heaven Panel">
+<meta name="mobile-web-app-capable" content="yes">
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
@@ -66,6 +78,12 @@
   }
   .assign-select.is-sin{color:var(--muted);}
   .assign-select:focus{border-color:var(--blue);}
+
+  .del-btn{
+    background:transparent;border:1px solid rgba(255,255,255,.14);color:var(--muted);
+    width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:14px;line-height:1;
+  }
+  .del-btn:hover{color:#ff6b6b;border-color:rgba(255,107,107,.4);background:rgba(255,107,107,.08);}
 
   table{width:100%;border-collapse:collapse;font-size:13px;}
   th,td{text-align:left;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.07);}
@@ -141,7 +159,7 @@
       <div class="tableWrap">
         <table>
           <thead>
-            <tr><th>Fecha</th><th>Nombre</th><th>Empresa</th><th>Teléfono</th><th>Email</th><th>Resultado</th><th>Demo</th><th>Contacto</th><th>Asignado</th></tr>
+            <tr><th>Fecha</th><th>Nombre</th><th>Empresa</th><th>Teléfono</th><th>Email</th><th>Resultado</th><th>Demo</th><th>Contacto</th><th>Asignado</th><th></th></tr>
           </thead>
           <tbody id="leadsBody"></tbody>
         </table>
@@ -264,11 +282,25 @@
         <td>${l.quiere_demo ? '<span class="yes">Sí</span>' : '<span class="no">No</span>'}</td>
         <td>${l.demo_contacto || "–"}</td>
         <td><select class="assign-select ${l.asignado_a ? "" : "is-sin"}" data-id="${l.id}">${assignOptionsHtml(l.asignado_a || "")}</select></td>
+        <td><button class="del-btn" data-id="${l.id}" data-nombre="${(l.nombre||"").replace(/"/g,'')}" title="Eliminar">🗑</button></td>
       </tr>`).join("");
 
     body.querySelectorAll(".assign-select").forEach(sel => {
       sel.onchange = () => updateAsignado(sel.dataset.id, sel.value, sel);
     });
+    body.querySelectorAll(".del-btn").forEach(btn => {
+      btn.onclick = () => deleteLead(btn.dataset.id, btn.dataset.nombre);
+    });
+  }
+
+  async function deleteLead(id, nombre){
+    if (!confirm(`¿Eliminar el registro de "${nombre}"? Esta acción no se puede deshacer.`)) return;
+    const { error } = await supabase.from("leads").delete().eq("id", id);
+    if (error){ alert("No se pudo eliminar: " + error.message); return; }
+    allLeads = allLeads.filter(l => l.id !== id);
+    renderStats();
+    renderChart();
+    renderTable();
   }
 
   ["searchBox"].forEach(id => document.getElementById(id).oninput = renderTable);
@@ -312,6 +344,10 @@
   };
 
   checkSession();
+
+  if ("serviceWorker" in navigator){
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  }
 })();
 </script>
 </body>
