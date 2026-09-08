@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Heaven Check — Admin</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   :root{
     --bg-0:#000b1d; --bg-1:#050f2a; --bg-2:#0a1330;
@@ -55,7 +56,16 @@
   .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center;}
   .toolbar input, .toolbar select{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.14);color:#fff;padding:9px 12px;border-radius:10px;font-size:13.5px;outline:none;}
   .toolbar input:focus, .toolbar select:focus{border-color:var(--blue);}
-  .toolbar .csvBtn{margin-left:auto;background:transparent;border:1px solid var(--blue-border);color:var(--blue);padding:9px 14px;border-radius:10px;font-size:13.5px;cursor:pointer;}
+  .toolbar .exportBtns{margin-left:auto;display:flex;gap:8px;}
+  .toolbar .exportBtns button{background:transparent;border:1px solid var(--blue-border);color:var(--blue);padding:9px 14px;border-radius:10px;font-size:13.5px;cursor:pointer;}
+  .toolbar .exportBtns button:hover{background:var(--blue-soft);}
+
+  .assign-select{
+    background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);color:#fff;
+    padding:6px 8px;border-radius:8px;font-size:12.5px;outline:none;cursor:pointer;
+  }
+  .assign-select.is-sin{color:var(--muted);}
+  .assign-select:focus{border-color:var(--blue);}
 
   table{width:100%;border-collapse:collapse;font-size:13px;}
   th,td{text-align:left;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.07);}
@@ -117,12 +127,21 @@
           <option value="si">Pidió demo</option>
           <option value="no">No pidió demo</option>
         </select>
-        <button class="csvBtn" id="csvBtn">Exportar CSV</button>
+        <select id="filterAsignado">
+          <option value="">Asignado: todos</option>
+          <option value="__sin__">Sin asignar</option>
+          <option value="Pablo">Pablo</option>
+          <option value="Graciela">Graciela</option>
+        </select>
+        <div class="exportBtns">
+          <button id="csvBtn">Exportar CSV</button>
+          <button id="xlsxBtn">Exportar Excel</button>
+        </div>
       </div>
       <div class="tableWrap">
         <table>
           <thead>
-            <tr><th>Fecha</th><th>Nombre</th><th>Empresa</th><th>Email</th><th>Resultado</th><th>Demo</th><th>Contacto</th></tr>
+            <tr><th>Fecha</th><th>Nombre</th><th>Empresa</th><th>Teléfono</th><th>Email</th><th>Resultado</th><th>Demo</th><th>Contacto</th><th>Asignado</th></tr>
           </thead>
           <tbody id="leadsBody"></tbody>
         </table>
@@ -139,6 +158,7 @@
   const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   const OUTCOME_LABEL = { preparada:"Preparada para escalar", integracion:"Oportunidad de integración", control:"Oportunidad de mayor control" };
+  const ASIGNADOS = ["Pablo", "Graciela"];
   let allLeads = [];
 
   // ---------------- login ----------------
@@ -201,13 +221,32 @@
     const q = document.getElementById("searchBox").value.trim().toLowerCase();
     const outcome = document.getElementById("filterOutcome").value;
     const demo = document.getElementById("filterDemo").value;
+    const asignado = document.getElementById("filterAsignado").value;
     return allLeads.filter(l => {
       if (q && !(`${l.nombre} ${l.empresa}`.toLowerCase().includes(q))) return false;
       if (outcome && l.outcome_id !== outcome) return false;
       if (demo === "si" && !l.quiere_demo) return false;
       if (demo === "no" && l.quiere_demo) return false;
+      if (asignado === "__sin__" && l.asignado_a) return false;
+      if (asignado && asignado !== "__sin__" && l.asignado_a !== asignado) return false;
       return true;
     });
+  }
+
+  function assignOptionsHtml(current){
+    const opts = ['<option value="">Sin asignar</option>'].concat(
+      ASIGNADOS.map(n => `<option value="${n}" ${current===n?"selected":""}>${n}</option>`)
+    );
+    if (current === "") opts[0] = opts[0].replace("<option", '<option selected');
+    return opts.join("");
+  }
+
+  async function updateAsignado(leadId, value, selectEl){
+    selectEl.classList.toggle("is-sin", !value);
+    const { error } = await supabase.from("leads").update({ asignado_a: value || null }).eq("id", leadId);
+    if (error){ console.warn("Error asignando lead:", error); return; }
+    const lead = allLeads.find(l => l.id === leadId);
+    if (lead) lead.asignado_a = value || null;
   }
 
   function renderTable(){
@@ -219,29 +258,57 @@
         <td>${new Date(l.created_at).toLocaleString("es-AR")}</td>
         <td>${l.nombre}</td>
         <td>${l.empresa}</td>
+        <td>${l.telefono || "–"}</td>
         <td>${l.email || "–"}</td>
         <td><span class="tag ${l.outcome_id}">${OUTCOME_LABEL[l.outcome_id] || l.outcome_id}</span></td>
         <td>${l.quiere_demo ? '<span class="yes">Sí</span>' : '<span class="no">No</span>'}</td>
         <td>${l.demo_contacto || "–"}</td>
+        <td><select class="assign-select ${l.asignado_a ? "" : "is-sin"}" data-id="${l.id}">${assignOptionsHtml(l.asignado_a || "")}</select></td>
       </tr>`).join("");
+
+    body.querySelectorAll(".assign-select").forEach(sel => {
+      sel.onchange = () => updateAsignado(sel.dataset.id, sel.value, sel);
+    });
   }
 
   ["searchBox"].forEach(id => document.getElementById(id).oninput = renderTable);
-  ["filterOutcome","filterDemo"].forEach(id => document.getElementById(id).onchange = renderTable);
+  ["filterOutcome","filterDemo","filterAsignado"].forEach(id => document.getElementById(id).onchange = renderTable);
+
+  function exportRows(){
+    const rows = applyFilters();
+    return rows.map(l => ({
+      "Fecha": new Date(l.created_at).toLocaleString("es-AR"),
+      "Nombre": l.nombre,
+      "Empresa": l.empresa,
+      "Teléfono": l.telefono || "",
+      "Email": l.email || "",
+      "Resultado": OUTCOME_LABEL[l.outcome_id] || l.outcome_id,
+      "Pidió demo": l.quiere_demo ? "Sí" : "No",
+      "Contacto demo": l.demo_contacto || "",
+      "Asignado a": l.asignado_a || "Sin asignar",
+    }));
+  }
 
   document.getElementById("csvBtn").onclick = () => {
-    const rows = applyFilters();
-    const header = ["Fecha","Nombre","Empresa","Email","Resultado","Pidio demo","Contacto"];
-    const lines = [header.join(",")].concat(rows.map(l => [
-      new Date(l.created_at).toLocaleString("es-AR"),
-      l.nombre, l.empresa, l.email || "", OUTCOME_LABEL[l.outcome_id] || l.outcome_id,
-      l.quiere_demo ? "Si" : "No", l.demo_contacto || ""
-    ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(",")));
-    const blob = new Blob([lines.join("\n")], { type:"text/csv;charset=utf-8;" });
+    const rows = exportRows();
+    const header = Object.keys(rows[0] || { Fecha:"" });
+    const lines = [header.join(",")].concat(rows.map(r =>
+      header.map(h => `"${String(r[h]).replace(/"/g,'""')}"`).join(",")
+    ));
+    const blob = new Blob(["﻿" + lines.join("\n")], { type:"text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url; a.download = "heaven-check-leads.csv"; a.click();
     URL.revokeObjectURL(url);
+  };
+
+  document.getElementById("xlsxBtn").onclick = () => {
+    const rows = exportRows();
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws["!cols"] = [{wch:18},{wch:22},{wch:22},{wch:16},{wch:24},{wch:24},{wch:11},{wch:18},{wch:12}];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Leads");
+    XLSX.writeFile(wb, "heaven-check-leads.xlsx");
   };
 
   checkSession();

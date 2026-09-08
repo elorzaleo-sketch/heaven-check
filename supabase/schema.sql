@@ -10,6 +10,7 @@ create table if not exists public.leads (
   -- datos personales (pantalla 1)
   nombre text not null,
   empresa text not null,
+  telefono text,
   email text,
 
   -- respuestas crudas del cuestionario, por id de pregunta
@@ -26,7 +27,10 @@ create table if not exists public.leads (
   -- solicitud de demo (se completa después, si la piden)
   quiere_demo boolean not null default false,
   demo_contacto text,
-  demo_requested_at timestamptz
+  demo_requested_at timestamptz,
+
+  -- seguimiento comercial: quién de Heaven se va a contactar con el lead
+  asignado_a text
 );
 
 -- Índices útiles para el panel de admin
@@ -63,6 +67,15 @@ create policy "solo admin autenticado puede leer"
   on public.leads for select
   to authenticated
   using (true);
+
+-- El panel de admin corre como usuario autenticado (no anon), así que
+-- necesita su propia policy de UPDATE para poder asignar cada lead a
+-- Pablo / Graciela / etc.
+create policy "admin autenticado puede actualizar"
+  on public.leads for update
+  to authenticated
+  using (true)
+  with check (true);
 
 -- ------------------------------------------------------------
 -- Usuario de admin

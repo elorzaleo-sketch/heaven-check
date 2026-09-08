@@ -24,12 +24,12 @@ const QUESTIONS = [
     text: "¿Por qué canales vendés actualmente?",
     hint: "Podés seleccionar más de una opción.",
     options: [
-      { value: "local", label: "Local físico" },
-      { value: "meli", label: "Mercado Libre" },
-      { value: "tienda_online", label: "Tienda online" },
-      { value: "redes", label: "Redes sociales" },
-      { value: "otros_marketplaces", label: "Otros marketplaces" },
-      { value: "otro", label: "Otro", allowText: true },
+      { value: "local", label: "Local físico", emoji: "🏬" },
+      { value: "meli", label: "Mercado Libre", emoji: "🛒" },
+      { value: "tienda_online", label: "Tienda online", emoji: "💻" },
+      { value: "redes", label: "Redes sociales", emoji: "📱" },
+      { value: "otros_marketplaces", label: "Otros marketplaces", emoji: "🌐" },
+      { value: "otro", label: "Otro", emoji: "✏️", allowText: true },
     ],
   },
   {
@@ -108,10 +108,10 @@ const QUESTIONS = [
     type: "single",
     text: "¿Cuántas cuentas de Mercado Libre administra tu negocio?",
     options: [
-      { value: "ninguna", label: "No vendemos por Mercado Libre", effects: {} },
-      { value: "una", label: "1 cuenta", effects: {} },
-      { value: "dos", label: "2 cuentas", effects: { C: 1 }, triggersFollowUp: true },
-      { value: "tres_mas", label: "3 o más cuentas", effects: { C: 2 }, triggersFollowUp: true },
+      { value: "ninguna", label: "No vendemos por Mercado Libre", emoji: "➖", effects: {} },
+      { value: "una", label: "1 cuenta", emoji: "🏷️", effects: {} },
+      { value: "dos", label: "2 cuentas", emoji: "🏷️", effects: { C: 1 }, triggersFollowUp: true },
+      { value: "tres_mas", label: "3 o más cuentas", emoji: "🏷️", effects: { C: 2 }, triggersFollowUp: true },
     ],
   },
   {
@@ -132,18 +132,19 @@ const QUESTIONS = [
 // Orden = prioridad cuando hay más de 3 candidatas.
 
 const OPPORTUNITY_MAP = [
-  { flag: "sin_visibilidad", text: "Centralizar información para tener mayor claridad sobre el desempeño del negocio." },
-  { flag: "costo_no_centralizado", text: "Obtener mayor visibilidad sobre los costos que impactan en la operación." },
-  { flag: "stock_manual", text: "Sincronizar el stock entre tus canales de venta." },
-  { flag: "factura_manual", text: "Integrar la facturación a la gestión diaria de tus ventas." },
-  { flag: "sync_parcial", text: "Automatizar la actualización de stock entre canales." },
-  { flag: "meli_desconectado", text: "Centralizar la gestión de tus cuentas de Mercado Libre." },
-  { flag: "sistemas_distintos", text: "Centralizar herramientas y procesos en un mismo entorno." },
-  { flag: "equipo_admin", text: "Reducir tareas administrativas repetitivas mediante automatización." },
-  { flag: "vende_mas_no_gana", text: "Ganar mayor visibilidad sobre la relación entre ventas, costos y rentabilidad." },
+  { flag: "sin_visibilidad", emoji: "🔍", text: "Centralizar información para tener mayor claridad sobre el desempeño del negocio." },
+  { flag: "costo_no_centralizado", emoji: "💰", text: "Obtener mayor visibilidad sobre los costos que impactan en la operación." },
+  { flag: "stock_manual", emoji: "📦", text: "Sincronizar el stock entre tus canales de venta." },
+  { flag: "factura_manual", emoji: "🧾", text: "Integrar la facturación a la gestión diaria de tus ventas." },
+  { flag: "sync_parcial", emoji: "🔄", text: "Automatizar la actualización de stock entre canales." },
+  { flag: "meli_desconectado", emoji: "🏷️", text: "Centralizar la gestión de tus cuentas de Mercado Libre." },
+  { flag: "sistemas_distintos", emoji: "🧩", text: "Centralizar herramientas y procesos en un mismo entorno." },
+  { flag: "equipo_admin", emoji: "👥", text: "Reducir tareas administrativas repetitivas mediante automatización." },
+  { flag: "vende_mas_no_gana", emoji: "📈", text: "Ganar mayor visibilidad sobre la relación entre ventas, costos y rentabilidad." },
 ];
 
 const OPPORTUNITY_MULTICANAL_AUTOMATIZADO = {
+  emoji: "🚀",
   text: "Seguir escalando una operación multicanal manteniendo el control.",
 };
 
@@ -214,19 +215,22 @@ function scoreAnswers(answers) {
   }
 
   // --- Oportunidades personalizadas (hasta 3, priorizadas por orden del mapa) ---
-  let opportunities = OPPORTUNITY_MAP.filter((o) => flags.has(o.flag)).map((o) => o.text);
-  // dedupe conservando orden
-  opportunities = [...new Set(opportunities)];
+  let opportunities = OPPORTUNITY_MAP.filter((o) => flags.has(o.flag)).map((o) => ({ text: o.text, emoji: o.emoji }));
+  // dedupe conservando orden (por texto)
+  const seen = new Set();
+  opportunities = opportunities.filter((o) => (seen.has(o.text) ? false : (seen.add(o.text), true)));
 
   if (opportunities.length === 0 && hasGoodAutomation) {
-    opportunities.push(OPPORTUNITY_MULTICANAL_AUTOMATIZADO.text);
+    opportunities.push(OPPORTUNITY_MULTICANAL_AUTOMATIZADO);
   }
   opportunities = opportunities.slice(0, 3);
 
   // Si el resultado es "preparada" y hay poco para mostrar, sumamos el mensaje de escala
   if (outcomeId === "preparada" && opportunities.length < 3 && hasGoodAutomation) {
-    opportunities.push(OPPORTUNITY_MULTICANAL_AUTOMATIZADO.text);
-    opportunities = [...new Set(opportunities)].slice(0, 3);
+    if (!opportunities.some((o) => o.text === OPPORTUNITY_MULTICANAL_AUTOMATIZADO.text)) {
+      opportunities.push(OPPORTUNITY_MULTICANAL_AUTOMATIZADO);
+    }
+    opportunities = opportunities.slice(0, 3);
   }
 
   return {

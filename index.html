@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
 <title>Heaven Check</title>
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
 <!-- Supabase JS client -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="scoring.js"></script>
@@ -21,14 +25,17 @@
     --white:#ffffff;
     --muted:#93a1c2;
     --danger:#ff6b6b;
+    --ok:#3ddc97;
     --radius:18px;
+    --font-display:"Sora","Segoe UI",system-ui,sans-serif;
+    --font-body:"Inter","Segoe UI",system-ui,-apple-system,sans-serif;
   }
   *{box-sizing:border-box;}
   html,body{height:100%;}
   body{
     margin:0;
     min-height:100vh;
-    font-family:"Segoe UI",Inter,system-ui,-apple-system,sans-serif;
+    font-family:var(--font-body);
     background:
       radial-gradient(1200px 700px at 15% -10%, #041233 0%, transparent 60%),
       radial-gradient(1000px 600px at 110% 10%, #041233 0%, transparent 55%),
@@ -38,7 +45,18 @@
     align-items:center;
     justify-content:center;
     padding:24px;
+    position:relative;
+    overflow:hidden;
   }
+  /* -- decoración de fondo: ondas + resplandores, en línea con la gráfica de Heaven -- */
+  .bg-decor{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
+  .bg-decor .blob{position:absolute;border-radius:50%;filter:blur(70px);opacity:.35;}
+  .bg-decor .blob.b1{width:420px;height:420px;background:var(--blue);top:-160px;left:-140px;}
+  .bg-decor .blob.b2{width:380px;height:380px;background:var(--indigo);bottom:-160px;right:-120px;opacity:.3;}
+  .bg-decor svg{position:absolute;opacity:.14;}
+  .bg-decor .wave1{top:8%;left:-6%;width:340px;}
+  .bg-decor .wave2{bottom:6%;right:-8%;width:380px;transform:scaleX(-1);}
+
   .app{
     width:100%;
     max-width:560px;
@@ -51,6 +69,7 @@
     flex-direction:column;
     overflow:hidden;
     position:relative;
+    z-index:1;
   }
   .topbar{
     display:flex;
@@ -73,10 +92,18 @@
   .screen.active{display:flex;}
   @keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
 
-  h1{font-size:26px;line-height:1.25;margin:0 0 10px;font-weight:800;letter-spacing:-.01em;}
+  h1{font-family:var(--font-display);font-size:27px;line-height:1.22;margin:0 0 10px;font-weight:800;letter-spacing:-.01em;text-wrap:balance;}
   h1 .accent{color:var(--blue);}
   p.lead{color:var(--muted);font-size:15px;line-height:1.55;margin:0 0 26px;}
   .hint{color:var(--muted);font-size:13px;margin:-14px 0 16px;}
+
+  .eyebrow{
+    display:inline-flex;align-items:center;gap:7px;
+    font-family:var(--font-display);font-size:11.5px;font-weight:700;
+    letter-spacing:.09em;text-transform:uppercase;color:var(--blue);
+    margin-bottom:12px;
+  }
+  .eyebrow .sep{color:var(--muted);opacity:.5;font-weight:500;}
 
   .field{margin-bottom:16px;}
   .field label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px;}
@@ -96,29 +123,49 @@
   .err.show{display:block;}
 
   .q-icon{
-    width:52px;height:52px;border-radius:14px;
-    background:var(--blue-soft);border:1px solid var(--blue-border);
-    display:flex;align-items:center;justify-content:center;margin-bottom:16px;
+    width:58px;height:58px;border-radius:16px;position:relative;
+    background:linear-gradient(145deg, var(--blue-soft), rgba(59,80,162,.22));
+    border:1px solid var(--blue-border);
+    display:flex;align-items:center;justify-content:center;margin-bottom:18px;
     color:var(--blue);
+    box-shadow:0 8px 20px rgba(0,153,255,.12);
+  }
+  .q-icon .emoji-chip{
+    position:absolute;bottom:-7px;right:-7px;width:26px;height:26px;border-radius:50%;
+    background:var(--bg-1);border:2px solid var(--bg-2);
+    display:flex;align-items:center;justify-content:center;font-size:14px;
   }
   .options{display:flex;flex-direction:column;gap:10px;margin-top:4px;}
   .opt{
     display:flex;align-items:center;gap:12px;
     background:rgba(255,255,255,.03);
     border:1px solid rgba(255,255,255,.12);
+    border-left:3px solid transparent;
     border-radius:14px;
-    padding:14px 16px;
+    padding:13px 16px;
     cursor:pointer;
     font-size:14.5px;
     line-height:1.4;
-    transition:.15s;
+    transition:border-color .15s, background .15s, transform .15s;
     text-align:left;
+    animation:optIn .3s ease backwards;
   }
-  .opt:hover{border-color:var(--blue-border);background:rgba(0,153,255,.06);}
-  .opt.selected{border-color:var(--blue);background:var(--blue-soft);box-shadow:0 0 0 1px var(--blue) inset;}
+  .opt:nth-child(1){animation-delay:.02s;} .opt:nth-child(2){animation-delay:.06s;}
+  .opt:nth-child(3){animation-delay:.10s;} .opt:nth-child(4){animation-delay:.14s;}
+  .opt:nth-child(5){animation-delay:.18s;} .opt:nth-child(6){animation-delay:.22s;}
+  @keyframes optIn{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:none;}}
+  .opt:hover{border-color:rgba(0,153,255,.4);background:rgba(0,153,255,.06);}
+  .opt.selected{
+    border-color:rgba(0,153,255,.4);
+    border-left-color:var(--blue);
+    background:var(--blue-soft);
+    transform:translateX(1px);
+  }
+  .opt .opt-emoji{font-size:17px;flex:none;line-height:1;}
   .opt .mark{
     width:20px;height:20px;flex:none;border-radius:6px;border:1.5px solid rgba(255,255,255,.3);
     display:flex;align-items:center;justify-content:center;font-size:12px;color:transparent;
+    margin-left:auto;
   }
   .opt.selected .mark{background:var(--blue);border-color:var(--blue);color:#fff;}
   .opt.radio .mark{border-radius:50%;}
@@ -140,9 +187,19 @@
   /* intro */
   .intro-screen{align-items:flex-start;justify-content:center;text-align:left;}
   .intro-logo{height:34px;margin-bottom:26px;}
-  .bullets{list-style:none;margin:0 0 28px;padding:0;display:flex;flex-direction:column;gap:12px;}
-  .bullets li{display:flex;gap:10px;align-items:center;color:var(--muted);font-size:14px;}
-  .bullets li .dot{width:6px;height:6px;border-radius:50%;background:var(--blue);flex:none;}
+  .intro-badge{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:60px;height:60px;border-radius:18px;font-size:28px;margin-bottom:20px;
+    background:linear-gradient(145deg, var(--blue-soft), rgba(59,80,162,.22));
+    border:1px solid var(--blue-border);box-shadow:0 8px 24px rgba(0,153,255,.15);
+  }
+  .bullets{list-style:none;margin:0 0 28px;padding:0;display:flex;flex-direction:column;gap:13px;}
+  .bullets li{display:flex;gap:11px;align-items:center;color:var(--muted);font-size:14px;}
+  .bullets li .ico{
+    flex:none;width:30px;height:30px;border-radius:9px;font-size:15px;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);
+  }
 
   /* loading */
   .loading-screen{align-items:center;justify-content:center;text-align:center;}
@@ -154,13 +211,32 @@
   @keyframes spin{to{transform:rotate(360deg);}}
 
   /* result */
-  .result-emoji{font-size:44px;margin-bottom:6px;}
-  .result-title{font-size:23px;font-weight:800;margin:0 0 12px;}
-  .result-diag{color:var(--muted);font-size:14.5px;line-height:1.6;margin:0 0 22px;}
-  .opps-label{font-size:13px;color:var(--muted);margin-bottom:12px;}
-  .opps{list-style:none;margin:0 0 8px;padding:0;display:flex;flex-direction:column;gap:12px;}
-  .opps li{display:flex;gap:12px;align-items:flex-start;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:14px 16px;font-size:14px;line-height:1.5;}
-  .opps li .check{color:var(--blue);flex:none;font-weight:800;margin-top:1px;}
+  .result-ring{
+    width:88px;height:88px;border-radius:50%;margin:0 auto 18px;
+    display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(circle at 50% 40%, rgba(0,153,255,.28), rgba(0,153,255,.03) 70%);
+    border:1px solid var(--blue-border);
+    animation:ringPulse 2.6s ease-in-out infinite;
+  }
+  @keyframes ringPulse{0%,100%{box-shadow:0 0 0 0 rgba(0,153,255,.18);}50%{box-shadow:0 0 0 10px rgba(0,153,255,0);}}
+  .result-emoji{font-size:40px;line-height:1;}
+  .result-eyebrow{text-align:center;}
+  .result-title{font-family:var(--font-display);font-size:23px;font-weight:800;margin:0 0 12px;text-align:center;text-wrap:balance;}
+  .result-diag{color:var(--muted);font-size:14.5px;line-height:1.6;margin:0 0 24px;text-align:center;}
+  .opps-label{font-family:var(--font-display);font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;}
+  .opps{list-style:none;margin:0 0 8px;padding:0;display:flex;flex-direction:column;gap:11px;}
+  .opps li{
+    display:flex;gap:13px;align-items:center;
+    background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);
+    border-radius:14px;padding:13px 16px;font-size:13.8px;line-height:1.45;
+    animation:optIn .35s ease backwards;
+  }
+  .opps li:nth-child(1){animation-delay:.05s;} .opps li:nth-child(2){animation-delay:.15s;} .opps li:nth-child(3){animation-delay:.25s;}
+  .opps li .opp-ico{
+    flex:none;width:34px;height:34px;border-radius:10px;font-size:16px;
+    display:flex;align-items:center;justify-content:center;
+    background:var(--blue-soft);border:1px solid var(--blue-border);
+  }
 
   .demo-box{margin-top:22px;border-top:1px solid rgba(255,255,255,.1);padding-top:22px;}
   .demo-box p{color:var(--muted);font-size:14px;margin:0 0 14px;}
@@ -174,6 +250,19 @@
 </head>
 <body>
 
+<div class="bg-decor">
+  <div class="blob b1"></div>
+  <div class="blob b2"></div>
+  <svg class="wave1" viewBox="0 0 300 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M-20 40C60 100 20 180 90 230C160 280 130 360 200 410C260 450 250 480 320 500" stroke="#0099ff" stroke-width="2"/>
+    <path d="M-40 90C40 150 0 230 70 280C140 330 110 410 180 460" stroke="#3b50a2" stroke-width="2"/>
+  </svg>
+  <svg class="wave2" viewBox="0 0 300 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M-20 40C60 100 20 180 90 230C160 280 130 360 200 410C260 450 250 480 320 500" stroke="#0099ff" stroke-width="2"/>
+    <path d="M-40 90C40 150 0 230 70 280C140 330 110 410 180 460" stroke="#3b50a2" stroke-width="2"/>
+  </svg>
+</div>
+
 <div class="app">
   <div class="topbar">
     <img class="logo" src="assets/logo-white.png" alt="Heaven" />
@@ -183,12 +272,13 @@
 
   <!-- INTRO -->
   <section class="screen active intro-screen" data-screen="intro">
+    <div class="intro-badge">🧭</div>
     <h1>HEAVEN <span class="accent">CHECK</span></h1>
     <p class="lead">¿Qué tan preparado está tu negocio para crecer? Respondé unas preguntas rápidas y descubrí qué tan preparada está hoy la gestión de tus operaciones para acompañar ese crecimiento.</p>
     <ul class="bullets">
-      <li><span class="dot"></span>Toma menos de 2 minutos</li>
-      <li><span class="dot"></span>8 preguntas sobre tu operación</li>
-      <li><span class="dot"></span>Un diagnóstico personalizado al final</li>
+      <li><span class="ico">⏱️</span>Toma menos de 2 minutos</li>
+      <li><span class="ico">📝</span>8 preguntas sobre tu operación</li>
+      <li><span class="ico">🎯</span>Un diagnóstico personalizado al final</li>
     </ul>
     <div class="spacer"></div>
     <div class="actions"><button class="btn btn-primary" id="startBtn">Empezar ✦</button></div>
@@ -196,7 +286,8 @@
 
   <!-- PERSONAL INFO -->
   <section class="screen" data-screen="personal">
-    <h1>Primero, <span class="accent">contanos quién sos</span></h1>
+    <div class="eyebrow">👋 <span class="sep">·</span> Antes de arrancar</div>
+    <h1>Contanos <span class="accent">quién sos</span></h1>
     <p class="lead">Así podemos mostrarte un diagnóstico a tu nombre.</p>
     <div class="field">
       <label>Nombre y apellido <span class="req">*</span></label>
@@ -205,6 +296,10 @@
     <div class="field">
       <label>Empresa / negocio <span class="req">*</span></label>
       <input type="text" id="fEmpresa" placeholder="Nombre de tu negocio" autocomplete="organization" />
+    </div>
+    <div class="field">
+      <label>Teléfono (opcional)</label>
+      <input type="tel" id="fTelefono" placeholder="11 1234 5678" autocomplete="tel" />
     </div>
     <div class="field">
       <label>Email (opcional)</label>
@@ -220,7 +315,8 @@
 
   <!-- QUESTIONS render dynamically here -->
   <section class="screen" data-screen="question" id="questionScreen">
-    <div class="q-icon" id="qIcon"></div>
+    <div class="q-icon" id="qIcon"><span class="emoji-chip" id="qEmojiChip"></span></div>
+    <div class="eyebrow" id="qEyebrow"></div>
     <h1 id="qText"></h1>
     <p class="hint" id="qHint" style="display:none;"></p>
     <div class="options" id="qOptions"></div>
@@ -276,12 +372,22 @@
     q5_recursos:"equipo", q6_crecimiento:"crecimiento", q7_costo_real:"costo",
     q8_cuentas_meli:"meli", q8b_gestion_cuentas:"meli"
   };
+  const EMOJI_BY_Q = {
+    q1_canales:"🛒", q2_stock:"📦", q3_sync_stock:"🔄", q4_facturacion:"🧾",
+    q5_recursos:"👥", q6_crecimiento:"📈", q7_costo_real:"💰",
+    q8_cuentas_meli:"🏷️", q8b_gestion_cuentas:"🏷️"
+  };
+  const CATEGORY_BY_Q = {
+    q1_canales:"Canales de venta", q2_stock:"Gestión de stock", q3_sync_stock:"Sincronización",
+    q4_facturacion:"Facturación", q5_recursos:"Equipo y recursos", q6_crecimiento:"Crecimiento",
+    q7_costo_real:"Costos de operación", q8_cuentas_meli:"Mercado Libre", q8b_gestion_cuentas:"Mercado Libre"
+  };
 
   // ----------------------------------------------------------------------
   // Estado
   // ----------------------------------------------------------------------
   const answers = {};
-  let personal = { nombre:"", empresa:"", email:"" };
+  let personal = { nombre:"", empresa:"", telefono:"", email:"" };
   let leadId = null;
   let lastResult = null;
 
@@ -326,13 +432,14 @@
   document.getElementById("personalNext").onclick = () => {
     const nombre = document.getElementById("fNombre").value.trim();
     const empresa = document.getElementById("fEmpresa").value.trim();
+    const telefono = document.getElementById("fTelefono").value.trim();
     const email = document.getElementById("fEmail").value.trim();
     if (!nombre || !empresa){
       document.getElementById("personalErr").classList.add("show");
       return;
     }
     document.getElementById("personalErr").classList.remove("show");
-    personal = { nombre, empresa, email };
+    personal = { nombre, empresa, telefono, email };
     qIndex = 0;
     renderQuestion();
     showScreen("question");
@@ -342,7 +449,10 @@
   function renderQuestion(){
     const qs = activeQuestions();
     const q = qs[qIndex];
-    document.getElementById("qIcon").innerHTML = ICONS[ICON_BY_Q[q.id]] || "";
+    document.getElementById("qIcon").innerHTML =
+      (ICONS[ICON_BY_Q[q.id]] || "") + '<span class="emoji-chip">' + (EMOJI_BY_Q[q.id] || "") + '</span>';
+    document.getElementById("qEyebrow").innerHTML =
+      "Pregunta " + (qIndex+1) + " de " + qs.length + ' <span class="sep">·</span> ' + (CATEGORY_BY_Q[q.id] || "");
     document.getElementById("qText").innerHTML = q.text;
     const hintEl = document.getElementById("qHint");
     if (q.hint){ hintEl.textContent = q.hint; hintEl.style.display="block"; } else hintEl.style.display="none";
@@ -358,7 +468,9 @@
         ? Array.isArray(current) && current.includes(opt.value)
         : current === opt.value;
       if (isSelected) div.classList.add("selected");
-      div.innerHTML = '<span class="mark">✓</span><span>' + opt.label + "</span>";
+      div.innerHTML =
+        (opt.emoji ? '<span class="opt-emoji">' + opt.emoji + '</span>' : '') +
+        '<span>' + opt.label + '</span><span class="mark">✓</span>';
       div.onclick = () => {
         if (q.type === "multi"){
           const arr = Array.isArray(answers[q.id]) ? answers[q.id].slice() : [];
@@ -414,6 +526,7 @@
         id: leadId,
         nombre: personal.nombre,
         empresa: personal.empresa,
+        telefono: personal.telefono || null,
         email: personal.email || null,
         answers: answers,
         scores: lastResult.totals,
@@ -428,19 +541,18 @@
 
   function renderResult(){
     const r = lastResult;
-    const emojiMap = { preparada:"🚀", integracion:"🔗", control:"🧭" };
     const html = `
-      <div class="result-emoji">${emojiMap[r.outcome.id]}</div>
+      <div class="result-eyebrow"><div class="result-ring"><div class="result-emoji">${r.outcome.emoji}</div></div></div>
       <div class="result-title">${r.outcome.nombre}</div>
       <div class="result-diag">${r.diagnosticoOverride || r.outcome.diagnostico}</div>
-      <div class="opps-label">Detectamos ${r.opportunities.length} oportunidad${r.opportunities.length===1?"":"es"} para acompañar tu próximo paso:</div>
+      <div class="opps-label">Detectamos ${r.opportunities.length} oportunidad${r.opportunities.length===1?"":"es"} para acompañar tu próximo paso</div>
       <ul class="opps">
-        ${r.opportunities.map(o => `<li><span class="check">✓</span><span>${o}</span></li>`).join("")}
+        ${r.opportunities.map(o => `<li><span class="opp-ico">${o.emoji || "✓"}</span><span>${o.text}</span></li>`).join("")}
       </ul>
       <div class="demo-box" id="demoBox">
         <p>¿Querés ver cómo Heaven podría aplicarse a tu negocio?</p>
         <div class="actions" style="margin-top:0;">
-          <button class="btn btn-primary" id="demoBtn">Solicitar una demo</button>
+          <button class="btn btn-primary" id="demoBtn">Solicitar una demo 🚀</button>
         </div>
       </div>
       <div class="replay"><a href="#" id="replayLink">Volver a jugar</a></div>
@@ -455,7 +567,7 @@
     const box = document.getElementById("demoBox");
     box.innerHTML = `
       <p>Dejanos un teléfono o WhatsApp y te contactamos para coordinar la demo.</p>
-      <div class="field"><input type="text" id="demoContacto" placeholder="Teléfono / WhatsApp" /></div>
+      <div class="field"><input type="text" id="demoContacto" placeholder="Teléfono / WhatsApp" value="${personal.telefono ? personal.telefono.replace(/"/g,'') : ''}" /></div>
       <div class="actions" style="margin-top:0;">
         <button class="btn btn-primary" id="demoSend">Enviar</button>
       </div>
@@ -483,10 +595,11 @@
 
   function resetApp(){
     Object.keys(answers).forEach(k => delete answers[k]);
-    personal = { nombre:"", empresa:"", email:"" };
+    personal = { nombre:"", empresa:"", telefono:"", email:"" };
     leadId = null; lastResult = null; qIndex = 0;
     document.getElementById("fNombre").value = "";
     document.getElementById("fEmpresa").value = "";
+    document.getElementById("fTelefono").value = "";
     document.getElementById("fEmail").value = "";
     showScreen("intro"); updateProgress();
   }
