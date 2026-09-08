@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
+<title>Heaven Check</title>
+
+<!-- Supabase JS client -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="scoring.js"></script>
+
+<style>
+  :root{
+    --bg-0:#000b1d;
+    --bg-1:#050f2a;
+    --bg-2:#0a1330;
+    --blue:#0099ff;
+    --blue-soft:rgba(0,153,255,.14);
+    --blue-border:rgba(0,153,255,.32);
+    --indigo:#3b50a2;
+    --white:#ffffff;
+    --muted:#93a1c2;
+    --danger:#ff6b6b;
+    --radius:18px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    min-height:100vh;
+    font-family:"Segoe UI",Inter,system-ui,-apple-system,sans-serif;
+    background:
+      radial-gradient(1200px 700px at 15% -10%, #041233 0%, transparent 60%),
+      radial-gradient(1000px 600px at 110% 10%, #041233 0%, transparent 55%),
+      var(--bg-0);
+    color:var(--white);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+  .app{
+    width:100%;
+    max-width:560px;
+    min-height:min(88vh, 780px);
+    background:linear-gradient(180deg, var(--bg-2), var(--bg-1));
+    border:1px solid var(--blue-border);
+    border-radius:28px;
+    box-shadow:0 30px 80px rgba(0,0,0,.55), 0 0 0 1px rgba(0,153,255,.05) inset;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    position:relative;
+  }
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:22px 26px 0;
+  }
+  .logo{height:22px;display:block;}
+  .progress-wrap{flex:1;height:4px;background:rgba(255,255,255,.08);border-radius:4px;margin:0 26px;overflow:hidden;}
+  .progress-bar{height:100%;background:linear-gradient(90deg,var(--indigo),var(--blue));border-radius:4px;transition:width .35s ease;}
+  .step-count{font-size:12px;color:var(--muted);min-width:36px;text-align:right;}
+
+  .screen{
+    flex:1;
+    display:none;
+    flex-direction:column;
+    padding:34px 30px 30px;
+    animation:fadeIn .35s ease;
+  }
+  .screen.active{display:flex;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+
+  h1{font-size:26px;line-height:1.25;margin:0 0 10px;font-weight:800;letter-spacing:-.01em;}
+  h1 .accent{color:var(--blue);}
+  p.lead{color:var(--muted);font-size:15px;line-height:1.55;margin:0 0 26px;}
+  .hint{color:var(--muted);font-size:13px;margin:-14px 0 16px;}
+
+  .field{margin-bottom:16px;}
+  .field label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px;}
+  .field input, .field textarea{
+    width:100%;
+    background:rgba(255,255,255,.04);
+    border:1px solid rgba(255,255,255,.14);
+    color:var(--white);
+    padding:13px 14px;
+    border-radius:12px;
+    font-size:15px;
+    outline:none;
+  }
+  .field input:focus, .field textarea:focus{border-color:var(--blue);background:rgba(0,153,255,.06);}
+  .field .req{color:var(--blue);}
+  .err{color:var(--danger);font-size:12px;margin-top:6px;display:none;}
+  .err.show{display:block;}
+
+  .q-icon{
+    width:52px;height:52px;border-radius:14px;
+    background:var(--blue-soft);border:1px solid var(--blue-border);
+    display:flex;align-items:center;justify-content:center;margin-bottom:16px;
+    color:var(--blue);
+  }
+  .options{display:flex;flex-direction:column;gap:10px;margin-top:4px;}
+  .opt{
+    display:flex;align-items:center;gap:12px;
+    background:rgba(255,255,255,.03);
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:14px;
+    padding:14px 16px;
+    cursor:pointer;
+    font-size:14.5px;
+    line-height:1.4;
+    transition:.15s;
+    text-align:left;
+  }
+  .opt:hover{border-color:var(--blue-border);background:rgba(0,153,255,.06);}
+  .opt.selected{border-color:var(--blue);background:var(--blue-soft);box-shadow:0 0 0 1px var(--blue) inset;}
+  .opt .mark{
+    width:20px;height:20px;flex:none;border-radius:6px;border:1.5px solid rgba(255,255,255,.3);
+    display:flex;align-items:center;justify-content:center;font-size:12px;color:transparent;
+  }
+  .opt.selected .mark{background:var(--blue);border-color:var(--blue);color:#fff;}
+  .opt.radio .mark{border-radius:50%;}
+  .opt input{display:none;}
+  .otro-text{margin-top:8px;}
+
+  .spacer{flex:1;}
+  .actions{display:flex;gap:12px;margin-top:26px;}
+  .btn{
+    appearance:none;border:none;cursor:pointer;
+    padding:15px 20px;border-radius:14px;font-size:15px;font-weight:700;
+    display:flex;align-items:center;justify-content:center;gap:8px;
+  }
+  .btn-primary{flex:1;background:linear-gradient(90deg,var(--indigo),var(--blue));color:#fff;box-shadow:0 10px 26px rgba(0,153,255,.25);}
+  .btn-primary:disabled{opacity:.4;cursor:not-allowed;box-shadow:none;}
+  .btn-ghost{background:transparent;color:var(--muted);border:1px solid rgba(255,255,255,.14);}
+  .btn-ghost:hover{color:var(--white);border-color:rgba(255,255,255,.3);}
+
+  /* intro */
+  .intro-screen{align-items:flex-start;justify-content:center;text-align:left;}
+  .intro-logo{height:34px;margin-bottom:26px;}
+  .bullets{list-style:none;margin:0 0 28px;padding:0;display:flex;flex-direction:column;gap:12px;}
+  .bullets li{display:flex;gap:10px;align-items:center;color:var(--muted);font-size:14px;}
+  .bullets li .dot{width:6px;height:6px;border-radius:50%;background:var(--blue);flex:none;}
+
+  /* loading */
+  .loading-screen{align-items:center;justify-content:center;text-align:center;}
+  .spinner{
+    width:56px;height:56px;border-radius:50%;
+    border:3px solid rgba(0,153,255,.15);border-top-color:var(--blue);
+    animation:spin 1s linear infinite;margin-bottom:22px;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* result */
+  .result-emoji{font-size:44px;margin-bottom:6px;}
+  .result-title{font-size:23px;font-weight:800;margin:0 0 12px;}
+  .result-diag{color:var(--muted);font-size:14.5px;line-height:1.6;margin:0 0 22px;}
+  .opps-label{font-size:13px;color:var(--muted);margin-bottom:12px;}
+  .opps{list-style:none;margin:0 0 8px;padding:0;display:flex;flex-direction:column;gap:12px;}
+  .opps li{display:flex;gap:12px;align-items:flex-start;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:14px 16px;font-size:14px;line-height:1.5;}
+  .opps li .check{color:var(--blue);flex:none;font-weight:800;margin-top:1px;}
+
+  .demo-box{margin-top:22px;border-top:1px solid rgba(255,255,255,.1);padding-top:22px;}
+  .demo-box p{color:var(--muted);font-size:14px;margin:0 0 14px;}
+  .thankyou{text-align:center;padding:10px 0;}
+  .thankyou .big{font-size:36px;margin-bottom:10px;}
+
+  .replay{text-align:center;margin-top:18px;}
+  .replay a{color:var(--muted);font-size:12.5px;text-decoration:none;border-bottom:1px dotted rgba(255,255,255,.25);}
+  .replay a:hover{color:var(--white);}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="topbar">
+    <img class="logo" src="assets/logo-white.png" alt="Heaven" />
+    <div class="progress-wrap"><div class="progress-bar" id="progressBar" style="width:0%"></div></div>
+    <div class="step-count" id="stepCount"></div>
+  </div>
+
+  <!-- INTRO -->
+  <section class="screen active intro-screen" data-screen="intro">
+    <h1>HEAVEN <span class="accent">CHECK</span></h1>
+    <p class="lead">¿Qué tan preparado está tu negocio para crecer? Respondé unas preguntas rápidas y descubrí qué tan preparada está hoy la gestión de tus operaciones para acompañar ese crecimiento.</p>
+    <ul class="bullets">
+      <li><span class="dot"></span>Toma menos de 2 minutos</li>
+      <li><span class="dot"></span>8 preguntas sobre tu operación</li>
+      <li><span class="dot"></span>Un diagnóstico personalizado al final</li>
+    </ul>
+    <div class="spacer"></div>
+    <div class="actions"><button class="btn btn-primary" id="startBtn">Empezar ✦</button></div>
+  </section>
+
+  <!-- PERSONAL INFO -->
+  <section class="screen" data-screen="personal">
+    <h1>Primero, <span class="accent">contanos quién sos</span></h1>
+    <p class="lead">Así podemos mostrarte un diagnóstico a tu nombre.</p>
+    <div class="field">
+      <label>Nombre y apellido <span class="req">*</span></label>
+      <input type="text" id="fNombre" placeholder="Tu nombre" autocomplete="name" />
+    </div>
+    <div class="field">
+      <label>Empresa / negocio <span class="req">*</span></label>
+      <input type="text" id="fEmpresa" placeholder="Nombre de tu negocio" autocomplete="organization" />
+    </div>
+    <div class="field">
+      <label>Email (opcional)</label>
+      <input type="email" id="fEmail" placeholder="tu@email.com" autocomplete="email" />
+    </div>
+    <div class="err" id="personalErr">Completá nombre y empresa para continuar.</div>
+    <div class="spacer"></div>
+    <div class="actions">
+      <button class="btn btn-ghost" data-back="intro">Atrás</button>
+      <button class="btn btn-primary" id="personalNext">Continuar</button>
+    </div>
+  </section>
+
+  <!-- QUESTIONS render dynamically here -->
+  <section class="screen" data-screen="question" id="questionScreen">
+    <div class="q-icon" id="qIcon"></div>
+    <h1 id="qText"></h1>
+    <p class="hint" id="qHint" style="display:none;"></p>
+    <div class="options" id="qOptions"></div>
+    <div class="spacer"></div>
+    <div class="actions">
+      <button class="btn btn-ghost" id="qBack">Atrás</button>
+      <button class="btn btn-primary" id="qNext">Continuar</button>
+    </div>
+  </section>
+
+  <!-- LOADING -->
+  <section class="screen loading-screen" data-screen="loading">
+    <div class="spinner"></div>
+    <p class="lead" style="margin:0;">Analizando tu negocio…</p>
+  </section>
+
+  <!-- RESULT -->
+  <section class="screen" data-screen="result">
+    <div id="resultContent"></div>
+  </section>
+</div>
+
+<script>
+(function(){
+  // ----------------------------------------------------------------------
+  // CONFIGURACIÓN SUPABASE — reemplazar por los valores reales del proyecto
+  // ----------------------------------------------------------------------
+  const SUPABASE_URL = "https://mhlwqqomlqzjjwspmqca.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1obHdxcW9tbHF6amp3c3BtcWNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg4NzYxOTUsImV4cCI6MjEwNDQ1MjE5NX0.aUnDnx2yHNo2NeSnA-VzmPAZWzOs4jevEe015bUKIyc";
+  let supabase = null;
+  try {
+    if (window.supabase && !SUPABASE_URL.includes("TU-PROYECTO")) {
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    }
+  } catch (e) { console.warn("Supabase no inicializado:", e); }
+
+  // ----------------------------------------------------------------------
+  // Iconos de línea simples (mismo estilo que el folleto)
+  // ----------------------------------------------------------------------
+  const ICONS = {
+    canales: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 9l1.5-5h15L21 9"/><path d="M4 9h16v10a1 1 0 01-1 1H5a1 1 0 01-1-1V9z"/><path d="M9 13a3 3 0 006 0"/></svg>',
+    stock: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>',
+    sync: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 12a9 9 0 01-15.5 6.3M3 12a9 9 0 0115.5-6.3"/><path d="M21 4v5h-5M3 20v-5h5"/></svg>',
+    factura: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 3h9l3 3v15l-2-1-2 1-2-1-2 1-2-1-2 1V3z"/><path d="M9 9h6M9 13h6M9 17h3"/></svg>',
+    equipo: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="8" r="3"/><path d="M2 20c0-3.3 3.1-6 7-6s7 2.7 7 6"/><circle cx="17.5" cy="9" r="2.4"/><path d="M16 20c.2-2.6 1.9-4.6 4-5.3"/></svg>',
+    crecimiento: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>',
+    costo: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.2a2.5 2.5 0 014.9.8c0 1.4-2.4 1.7-2.4 3.2M12 16v1"/></svg>',
+    meli: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="7" width="16" height="13" rx="2"/><path d="M8 7V5a4 4 0 018 0v2"/></svg>',
+    rocket: '🚀', link: '🔗', compass: '🧭'
+  };
+  const ICON_BY_Q = {
+    q1_canales:"canales", q2_stock:"stock", q3_sync_stock:"sync", q4_facturacion:"factura",
+    q5_recursos:"equipo", q6_crecimiento:"crecimiento", q7_costo_real:"costo",
+    q8_cuentas_meli:"meli", q8b_gestion_cuentas:"meli"
+  };
+
+  // ----------------------------------------------------------------------
+  // Estado
+  // ----------------------------------------------------------------------
+  const answers = {};
+  let personal = { nombre:"", empresa:"", email:"" };
+  let leadId = null;
+  let lastResult = null;
+
+  function activeQuestions(){
+    return QUESTIONS.filter(q => {
+      if (!q.conditionalOn) return true;
+      const val = answers[q.conditionalOn.question];
+      return q.conditionalOn.values.includes(val);
+    });
+  }
+
+  let qIndex = 0; // índice dentro de activeQuestions()
+
+  const screens = {};
+  document.querySelectorAll(".screen").forEach(s => screens[s.dataset.screen] = s);
+
+  function showScreen(name){
+    Object.values(screens).forEach(s => s.classList.remove("active"));
+    screens[name].classList.add("active");
+  }
+
+  function updateProgress(){
+    const total = activeQuestions().length;
+    const bar = document.getElementById("progressBar");
+    const count = document.getElementById("stepCount");
+    if (screens.question.classList.contains("active")){
+      bar.style.width = (((qIndex) / total) * 100) + "%";
+      count.textContent = (qIndex+1) + "/" + total;
+    } else if (screens.intro.classList.contains("active") || screens.personal.classList.contains("active")){
+      bar.style.width = "0%"; count.textContent = "";
+    } else {
+      bar.style.width = "100%"; count.textContent = "";
+    }
+  }
+
+  // ----------------------------------------------------------------------
+  // Navegación
+  // ----------------------------------------------------------------------
+  document.getElementById("startBtn").onclick = () => { showScreen("personal"); updateProgress(); };
+  document.querySelectorAll("[data-back]").forEach(b => b.onclick = () => { showScreen(b.dataset.back); updateProgress(); });
+
+  document.getElementById("personalNext").onclick = () => {
+    const nombre = document.getElementById("fNombre").value.trim();
+    const empresa = document.getElementById("fEmpresa").value.trim();
+    const email = document.getElementById("fEmail").value.trim();
+    if (!nombre || !empresa){
+      document.getElementById("personalErr").classList.add("show");
+      return;
+    }
+    document.getElementById("personalErr").classList.remove("show");
+    personal = { nombre, empresa, email };
+    qIndex = 0;
+    renderQuestion();
+    showScreen("question");
+    updateProgress();
+  };
+
+  function renderQuestion(){
+    const qs = activeQuestions();
+    const q = qs[qIndex];
+    document.getElementById("qIcon").innerHTML = ICONS[ICON_BY_Q[q.id]] || "";
+    document.getElementById("qText").innerHTML = q.text;
+    const hintEl = document.getElementById("qHint");
+    if (q.hint){ hintEl.textContent = q.hint; hintEl.style.display="block"; } else hintEl.style.display="none";
+
+    const wrap = document.getElementById("qOptions");
+    wrap.innerHTML = "";
+    const current = answers[q.id];
+
+    q.options.forEach(opt => {
+      const div = document.createElement("div");
+      div.className = "opt" + (q.type === "single" ? " radio" : "");
+      const isSelected = q.type === "multi"
+        ? Array.isArray(current) && current.includes(opt.value)
+        : current === opt.value;
+      if (isSelected) div.classList.add("selected");
+      div.innerHTML = '<span class="mark">✓</span><span>' + opt.label + "</span>";
+      div.onclick = () => {
+        if (q.type === "multi"){
+          const arr = Array.isArray(answers[q.id]) ? answers[q.id].slice() : [];
+          const i = arr.indexOf(opt.value);
+          if (i>-1) arr.splice(i,1); else arr.push(opt.value);
+          answers[q.id] = arr;
+        } else {
+          answers[q.id] = opt.value;
+        }
+        renderQuestion();
+        updateNextEnabled();
+      };
+      wrap.appendChild(div);
+    });
+    updateNextEnabled();
+    updateProgress();
+  }
+
+  function updateNextEnabled(){
+    const qs = activeQuestions();
+    const q = qs[qIndex];
+    const val = answers[q.id];
+    const answered = q.type === "multi" ? Array.isArray(val) && val.length>0 : !!val;
+    document.getElementById("qNext").disabled = !answered;
+  }
+
+  document.getElementById("qBack").onclick = () => {
+    if (qIndex === 0){ showScreen("personal"); updateProgress(); return; }
+    qIndex--; renderQuestion();
+  };
+
+  document.getElementById("qNext").onclick = () => {
+    const qs = activeQuestions();
+    if (qIndex < qs.length - 1){
+      qIndex++;
+      // recalcular por si la pregunta condicional cambió la lista
+      renderQuestion();
+    } else {
+      finishQuiz();
+    }
+  };
+
+  // ----------------------------------------------------------------------
+  // Fin del cuestionario → scoring + guardado + resultado
+  // ----------------------------------------------------------------------
+  async function finishQuiz(){
+    showScreen("loading"); updateProgress();
+    lastResult = scoreAnswers(answers);
+    leadId = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
+
+    if (supabase){
+      supabase.from("leads").insert({
+        id: leadId,
+        nombre: personal.nombre,
+        empresa: personal.empresa,
+        email: personal.email || null,
+        answers: answers,
+        scores: lastResult.totals,
+        outcome_id: lastResult.outcome.id,
+        outcome_nombre: lastResult.outcome.nombre,
+        opportunities: lastResult.opportunities,
+      }).then(({error}) => { if (error) console.warn("Error guardando lead:", error); });
+    }
+
+    setTimeout(() => { renderResult(); showScreen("result"); updateProgress(); }, 1300);
+  }
+
+  function renderResult(){
+    const r = lastResult;
+    const emojiMap = { preparada:"🚀", integracion:"🔗", control:"🧭" };
+    const html = `
+      <div class="result-emoji">${emojiMap[r.outcome.id]}</div>
+      <div class="result-title">${r.outcome.nombre}</div>
+      <div class="result-diag">${r.diagnosticoOverride || r.outcome.diagnostico}</div>
+      <div class="opps-label">Detectamos ${r.opportunities.length} oportunidad${r.opportunities.length===1?"":"es"} para acompañar tu próximo paso:</div>
+      <ul class="opps">
+        ${r.opportunities.map(o => `<li><span class="check">✓</span><span>${o}</span></li>`).join("")}
+      </ul>
+      <div class="demo-box" id="demoBox">
+        <p>¿Querés ver cómo Heaven podría aplicarse a tu negocio?</p>
+        <div class="actions" style="margin-top:0;">
+          <button class="btn btn-primary" id="demoBtn">Solicitar una demo</button>
+        </div>
+      </div>
+      <div class="replay"><a href="#" id="replayLink">Volver a jugar</a></div>
+    `;
+    document.getElementById("resultContent").innerHTML = html;
+
+    document.getElementById("demoBtn").onclick = showDemoForm;
+    document.getElementById("replayLink").onclick = (e) => { e.preventDefault(); resetApp(); };
+  }
+
+  function showDemoForm(){
+    const box = document.getElementById("demoBox");
+    box.innerHTML = `
+      <p>Dejanos un teléfono o WhatsApp y te contactamos para coordinar la demo.</p>
+      <div class="field"><input type="text" id="demoContacto" placeholder="Teléfono / WhatsApp" /></div>
+      <div class="actions" style="margin-top:0;">
+        <button class="btn btn-primary" id="demoSend">Enviar</button>
+      </div>
+    `;
+    document.getElementById("demoSend").onclick = submitDemo;
+  }
+
+  function submitDemo(){
+    const contacto = document.getElementById("demoContacto").value.trim();
+    if (supabase && leadId){
+      supabase.from("leads").update({
+        quiere_demo: true,
+        demo_contacto: contacto || null,
+        demo_requested_at: new Date().toISOString(),
+      }).eq("id", leadId).then(({error}) => { if (error) console.warn("Error guardando demo:", error); });
+    }
+    document.getElementById("demoBox").innerHTML = `
+      <div class="thankyou">
+        <div class="big">✅</div>
+        <div style="font-weight:700;margin-bottom:6px;">¡Listo, ${personal.nombre.split(" ")[0]}!</div>
+        <div style="color:var(--muted);font-size:14px;">En breve te contactamos para coordinar tu demo de Heaven.</div>
+      </div>
+    `;
+  }
+
+  function resetApp(){
+    Object.keys(answers).forEach(k => delete answers[k]);
+    personal = { nombre:"", empresa:"", email:"" };
+    leadId = null; lastResult = null; qIndex = 0;
+    document.getElementById("fNombre").value = "";
+    document.getElementById("fEmpresa").value = "";
+    document.getElementById("fEmail").value = "";
+    showScreen("intro"); updateProgress();
+  }
+
+  updateProgress();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Heaven Check — Admin</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+  :root{
+    --bg-0:#000b1d; --bg-1:#050f2a; --bg-2:#0a1330;
+    --blue:#0099ff; --blue-soft:rgba(0,153,255,.14); --blue-border:rgba(0,153,255,.32);
+    --indigo:#3b50a2; --white:#ffffff; --muted:#93a1c2; --card:#0a1330;
+    --ok:#3ddc97; --warn:#ffb020;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;min-height:100vh;font-family:"Segoe UI",Inter,system-ui,sans-serif;
+    background:radial-gradient(1200px 700px at 15% -10%, #041233 0%, transparent 60%), var(--bg-0);
+    color:var(--white);
+  }
+  header{display:flex;align-items:center;justify-content:space-between;padding:20px 28px;border-bottom:1px solid rgba(255,255,255,.08);}
+  header img{height:22px;}
+  header .title{font-weight:800;letter-spacing:-.01em;}
+  header .title span{color:var(--blue);}
+  .logout{background:transparent;border:1px solid rgba(255,255,255,.16);color:var(--muted);padding:9px 14px;border-radius:10px;cursor:pointer;font-size:13px;}
+  .logout:hover{color:#fff;border-color:rgba(255,255,255,.3);}
+
+  main{max-width:1080px;margin:0 auto;padding:28px;}
+
+  /* ---- login ---- */
+  #loginScreen{max-width:380px;margin:14vh auto;padding:0 20px;}
+  #loginScreen .card{background:var(--card);border:1px solid var(--blue-border);border-radius:20px;padding:30px;}
+  #loginScreen h1{font-size:20px;margin:0 0 18px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px;}
+  .field input{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.14);color:#fff;padding:12px 13px;border-radius:10px;font-size:14px;outline:none;}
+  .field input:focus{border-color:var(--blue);}
+  .btn{appearance:none;border:none;cursor:pointer;padding:13px 18px;border-radius:12px;font-size:14.5px;font-weight:700;width:100%;background:linear-gradient(90deg,var(--indigo),var(--blue));color:#fff;}
+  .err{color:#ff6b6b;font-size:13px;margin-top:10px;display:none;}
+  .err.show{display:block;}
+
+  /* ---- stats ---- */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:24px;}
+  .stat{background:var(--card);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:18px;}
+  .stat .num{font-size:28px;font-weight:800;}
+  .stat .label{color:var(--muted);font-size:12.5px;margin-top:4px;}
+
+  .panel{background:var(--card);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:20px;margin-bottom:22px;}
+  .panel h2{font-size:15px;margin:0 0 16px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;}
+
+  .bar-row{display:grid;grid-template-columns:170px 1fr 44px;align-items:center;gap:12px;margin-bottom:10px;font-size:13.5px;}
+  .bar-track{background:rgba(255,255,255,.06);border-radius:8px;height:10px;overflow:hidden;}
+  .bar-fill{height:100%;border-radius:8px;background:linear-gradient(90deg,var(--indigo),var(--blue));}
+
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center;}
+  .toolbar input, .toolbar select{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.14);color:#fff;padding:9px 12px;border-radius:10px;font-size:13.5px;outline:none;}
+  .toolbar input:focus, .toolbar select:focus{border-color:var(--blue);}
+  .toolbar .csvBtn{margin-left:auto;background:transparent;border:1px solid var(--blue-border);color:var(--blue);padding:9px 14px;border-radius:10px;font-size:13.5px;cursor:pointer;}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.07);}
+  th{color:var(--muted);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;}
+  tr:hover td{background:rgba(255,255,255,.02);}
+  .tag{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11.5px;font-weight:700;}
+  .tag.preparada{background:rgba(61,220,151,.15);color:var(--ok);}
+  .tag.integracion{background:var(--blue-soft);color:var(--blue);}
+  .tag.control{background:rgba(255,176,32,.15);color:var(--warn);}
+  .yes{color:var(--ok);font-weight:700;}
+  .no{color:var(--muted);}
+  .tableWrap{overflow-x:auto;}
+  .empty{color:var(--muted);text-align:center;padding:30px 0;}
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+  <div class="card">
+    <h1>Heaven Check — Panel</h1>
+    <div class="field"><label>Email</label><input type="email" id="loginEmail" /></div>
+    <div class="field"><label>Contraseña</label><input type="password" id="loginPass" /></div>
+    <button class="btn" id="loginBtn">Ingresar</button>
+    <div class="err" id="loginErr">Email o contraseña incorrectos.</div>
+  </div>
+</div>
+
+<div id="dashboard" style="display:none;">
+  <header>
+    <img src="assets/logo-white.png" alt="Heaven" />
+    <div class="title">Heaven <span>Check</span> — Panel</div>
+    <button class="logout" id="logoutBtn">Cerrar sesión</button>
+  </header>
+  <main>
+    <div class="stats">
+      <div class="stat"><div class="num" id="statTotal">–</div><div class="label">Personas que jugaron</div></div>
+      <div class="stat"><div class="num" id="statDemo">–</div><div class="label">Pidieron demo</div></div>
+      <div class="stat"><div class="num" id="statConv">–</div><div class="label">Tasa de conversión a demo</div></div>
+      <div class="stat"><div class="num" id="statHoy">–</div><div class="label">Jugaron hoy</div></div>
+    </div>
+
+    <div class="panel">
+      <h2>Distribución de resultados</h2>
+      <div id="barChart"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Leads</h2>
+      <div class="toolbar">
+        <input type="text" id="searchBox" placeholder="Buscar por nombre o empresa…" />
+        <select id="filterOutcome">
+          <option value="">Todos los resultados</option>
+          <option value="preparada">Preparada para escalar</option>
+          <option value="integracion">Oportunidad de integración</option>
+          <option value="control">Oportunidad de mayor control</option>
+        </select>
+        <select id="filterDemo">
+          <option value="">Demo: todos</option>
+          <option value="si">Pidió demo</option>
+          <option value="no">No pidió demo</option>
+        </select>
+        <button class="csvBtn" id="csvBtn">Exportar CSV</button>
+      </div>
+      <div class="tableWrap">
+        <table>
+          <thead>
+            <tr><th>Fecha</th><th>Nombre</th><th>Empresa</th><th>Email</th><th>Resultado</th><th>Demo</th><th>Contacto</th></tr>
+          </thead>
+          <tbody id="leadsBody"></tbody>
+        </table>
+        <div class="empty" id="emptyMsg" style="display:none;">No hay leads que coincidan con el filtro.</div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+(function(){
+  const SUPABASE_URL = "https://mhlwqqomlqzjjwspmqca.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1obHdxcW9tbHF6amp3c3BtcWNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg4NzYxOTUsImV4cCI6MjEwNDQ1MjE5NX0.aUnDnx2yHNo2NeSnA-VzmPAZWzOs4jevEe015bUKIyc";
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const OUTCOME_LABEL = { preparada:"Preparada para escalar", integracion:"Oportunidad de integración", control:"Oportunidad de mayor control" };
+  let allLeads = [];
+
+  // ---------------- login ----------------
+  document.getElementById("loginBtn").onclick = async () => {
+    const email = document.getElementById("loginEmail").value.trim();
+    const password = document.getElementById("loginPass").value;
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error){ document.getElementById("loginErr").classList.add("show"); return; }
+    enterDashboard();
+  };
+  document.getElementById("logoutBtn").onclick = async () => { await supabase.auth.signOut(); location.reload(); };
+
+  async function checkSession(){
+    const { data } = await supabase.auth.getSession();
+    if (data.session) enterDashboard();
+  }
+
+  async function enterDashboard(){
+    document.getElementById("loginScreen").style.display = "none";
+    document.getElementById("dashboard").style.display = "block";
+    await loadLeads();
+  }
+
+  // ---------------- datos ----------------
+  async function loadLeads(){
+    const { data, error } = await supabase.from("leads").select("*").order("created_at", { ascending:false });
+    if (error){ console.error(error); return; }
+    allLeads = data || [];
+    renderStats();
+    renderChart();
+    renderTable();
+  }
+
+  function renderStats(){
+    const total = allLeads.length;
+    const demo = allLeads.filter(l => l.quiere_demo).length;
+    const conv = total ? Math.round((demo/total)*100) : 0;
+    const today = new Date().toDateString();
+    const hoy = allLeads.filter(l => new Date(l.created_at).toDateString() === today).length;
+    document.getElementById("statTotal").textContent = total;
+    document.getElementById("statDemo").textContent = demo;
+    document.getElementById("statConv").textContent = conv + "%";
+    document.getElementById("statHoy").textContent = hoy;
+  }
+
+  function renderChart(){
+    const counts = { preparada:0, integracion:0, control:0 };
+    allLeads.forEach(l => { if (counts[l.outcome_id] !== undefined) counts[l.outcome_id]++; });
+    const max = Math.max(1, ...Object.values(counts));
+    const el = document.getElementById("barChart");
+    el.innerHTML = Object.entries(counts).map(([id,n]) => `
+      <div class="bar-row">
+        <div>${OUTCOME_LABEL[id]}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${(n/max)*100}%"></div></div>
+        <div>${n}</div>
+      </div>`).join("");
+  }
+
+  function applyFilters(){
+    const q = document.getElementById("searchBox").value.trim().toLowerCase();
+    const outcome = document.getElementById("filterOutcome").value;
+    const demo = document.getElementById("filterDemo").value;
+    return allLeads.filter(l => {
+      if (q && !(`${l.nombre} ${l.empresa}`.toLowerCase().includes(q))) return false;
+      if (outcome && l.outcome_id !== outcome) return false;
+      if (demo === "si" && !l.quiere_demo) return false;
+      if (demo === "no" && l.quiere_demo) return false;
+      return true;
+    });
+  }
+
+  function renderTable(){
+    const rows = applyFilters();
+    const body = document.getElementById("leadsBody");
+    document.getElementById("emptyMsg").style.display = rows.length ? "none" : "block";
+    body.innerHTML = rows.map(l => `
+      <tr>
+        <td>${new Date(l.created_at).toLocaleString("es-AR")}</td>
+        <td>${l.nombre}</td>
+        <td>${l.empresa}</td>
+        <td>${l.email || "–"}</td>
+        <td><span class="tag ${l.outcome_id}">${OUTCOME_LABEL[l.outcome_id] || l.outcome_id}</span></td>
+        <td>${l.quiere_demo ? '<span class="yes">Sí</span>' : '<span class="no">No</span>'}</td>
+        <td>${l.demo_contacto || "–"}</td>
+      </tr>`).join("");
+  }
+
+  ["searchBox"].forEach(id => document.getElementById(id).oninput = renderTable);
+  ["filterOutcome","filterDemo"].forEach(id => document.getElementById(id).onchange = renderTable);
+
+  document.getElementById("csvBtn").onclick = () => {
+    const rows = applyFilters();
+    const header = ["Fecha","Nombre","Empresa","Email","Resultado","Pidio demo","Contacto"];
+    const lines = [header.join(",")].concat(rows.map(l => [
+      new Date(l.created_at).toLocaleString("es-AR"),
+      l.nombre, l.empresa, l.email || "", OUTCOME_LABEL[l.outcome_id] || l.outcome_id,
+      l.quiere_demo ? "Si" : "No", l.demo_contacto || ""
+    ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(",")));
+    const blob = new Blob([lines.join("\n")], { type:"text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "heaven-check-leads.csv"; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  checkSession();
+})();
+</script>
+</body>
+</html>
