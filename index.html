@@ -635,13 +635,16 @@
     if (supabase && leadId){
       // Esperamos a que el guardado inicial del lead haya terminado (haya
       // salido bien o mal) antes de intentar marcar la demo, para no llegar
-      // antes de que la fila exista en la base.
+      // antes de que la fila exista en la base. Usamos una función de
+      // Supabase (marcar_demo) en vez de un update directo, porque el
+      // visitante no tiene permiso de LEER la tabla (a propósito, para
+      // proteger los datos de los demás) y en Postgres eso también bloquea
+      // silenciosamente el update directo sobre esa fila.
       insertPromise.then(() => {
-        supabase.from("leads").update({
-          quiere_demo: true,
-          demo_contacto: personal.telefono || null,
-          demo_requested_at: new Date().toISOString(),
-        }).eq("id", leadId).then(({error}) => { if (error) console.warn("Error guardando demo:", error); });
+        supabase.rpc("marcar_demo", {
+          p_lead_id: leadId,
+          p_telefono: personal.telefono || null,
+        }).then(({error}) => { if (error) console.warn("Error guardando demo:", error); });
       });
     }
     const modal = document.getElementById("demoModal");
