@@ -411,6 +411,33 @@
   } catch (e) { console.warn("Supabase no inicializado:", e); }
 
   // ----------------------------------------------------------------------
+  // CRM Heaven (heaven-site) — además de Supabase, cada lead se manda acá
+  // para que aparezca en el CRM como si viniera de la web.
+  // ----------------------------------------------------------------------
+  const HEAVEN_CRM_URL = "https://heaven.com.ar/public/api/submit-lead-external.php";
+  const HEAVEN_CRM_API_KEY = "7da572f8618f29d8ed9e818cfa6a2cef1c71281ab72a73ac0274eb431ed2add0";
+
+  function sendLeadToCrm(personal, lastResult){
+    const mensaje = [
+      "Resultado: " + lastResult.outcome.nombre,
+      lastResult.opportunities.map(o => "- " + o.text).join("\n")
+    ].join("\n\n");
+
+    fetch(HEAVEN_CRM_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Api-Key": HEAVEN_CRM_API_KEY },
+      body: JSON.stringify({
+        nombre: personal.nombre,
+        empresa: personal.empresa,
+        telefono: personal.telefono,
+        email: personal.email || "",
+        mensaje: mensaje,
+        origen: "Heaven Check",
+      }),
+    }).catch(e => console.warn("Error mandando lead al CRM:", e));
+  }
+
+  // ----------------------------------------------------------------------
   // Iconos de línea simples (mismo estilo que el folleto)
   // ----------------------------------------------------------------------
   const ICONS = {
@@ -581,6 +608,8 @@
     showScreen("loading"); updateProgress();
     lastResult = scoreAnswers(answers);
     leadId = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()));
+
+    sendLeadToCrm(personal, lastResult);
 
     if (supabase){
       insertPromise = supabase.from("leads").insert({
